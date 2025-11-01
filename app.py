@@ -15,45 +15,8 @@ import io
 # ------------------------------
 
 
-@st.cache_resource
-def load_model():
-    try:
-        import re, requests, io, joblib
 
-        # 🧩 Full Google Drive share link
-        drive_link = "https://drive.google.com/file/d/1Erk3-uJg69a15rnhipBS7TxmmxbU0fC1/view?usp=sharing"
-
-        # Extract the file ID automatically
-        match = re.search(r"/d/([a-zA-Z0-9_-]+)", drive_link)
-        if not match:
-            st.error("❌ Invalid Google Drive link format.")
-            return None
-        file_id = match.group(1)
-
-        # Direct download URL
-        url = f"https://drive.google.com/uc?export=download&id={file_id}"
-
-        # ⚡ Handle Drive confirmation for large files
-        session = requests.Session()
-        response = session.get(url, stream=True)
-        for key, value in response.cookies.items():
-            if key.startswith("download_warning"):
-                url = f"https://drive.google.com/uc?export=download&confirm={value}&id={file_id}"
-                response = session.get(url, stream=True)
-                break
-
-        # Read file into memory
-        model = joblib.load(io.BytesIO(response.content))
-        return model
-
-    except Exception as e:
-        st.error(f"❌ Error loading model: {e}")
-        return None
-
-
-# ✅ Load once globally
-model = load_model()
-
+model = joblib.load("nb_spam_ham.pkl")
 
 
 # ------------------------------
@@ -353,5 +316,3 @@ st.markdown(
     "<div class='footer'>© 2025 Spam Detector Inc.</div>",
     unsafe_allow_html=True
 )
-
-
