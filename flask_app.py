@@ -38,6 +38,7 @@ def predict_spam_api(email_text):
         prediction = model.predict([cleaned_text])[0]
         prob = model.predict_proba([cleaned_text])[0]
     except Exception as e:
+        print(e)
         return "Error", 0.0, cleaned_text
 
     # Confidence logic: prob[1] is spam, prob[0] is ham
