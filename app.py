@@ -1,23 +1,55 @@
 import streamlit as st
-import requests
-import json
+import time
+import joblib
+import re
+import numpy as np
+from sklearn.pipeline import Pipeline
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.preprocessing import FunctionTransformer
+
+# ------------------------------
+# Load Model
+# ------------------------------
+model = joblib.load("nb_spam_ham.pkl")
+
+# ------------------------------
+# Text Cleaning Function
+# ------------------------------
+def clean_text(text):
+    text = text.lower()
+    text = re.sub(r'[^a-z\s]', '', text)  # remove numbers/symbols
+    text = re.sub(r'\s+', ' ', text).strip()  # remove extra spaces
+    return text
 
 # ------------------------------
 # Spam Prediction Logic
 # ------------------------------
 def predict_spam(email_text):
-    try:
-        response = requests.post("http://127.0.0.1:5000/predict", json={"email_text": email_text})
-        if response.status_code == 200:
-            result = response.json()
-            return result.get("prediction"), result.get("confidence"), result.get("cleaned_text")
-        else:
-            st.error(f"Error from API: {response.text}")
-            return "Error", 0.0, ""
-    except requests.exceptions.RequestException as e:
-        st.error(f"Could not connect to the prediction service: {e}")
-        return "Error", 0.0, ""
+    if model is None:
+        return "Error", 0.0, "" # Return empty string for cleaned_text on model error
 
+    time.sleep(0.5)  # simulate processing time
+
+    # Clean the email text before prediction
+    cleaned_text = clean_text(email_text)
+
+    # Handle empty input after cleaning
+    if not cleaned_text:
+        return "Ham", 1.0, cleaned_text # Default to Ham if input is empty or just symbols
+
+    # Predict label and probability
+    try:
+        prediction = model.predict([cleaned_text])[0]
+        prob = model.predict_proba([cleaned_text])[0]
+    except Exception as e:
+        st.error(f"An error occurred during prediction: {e}")
+        return "Error", 0.0, cleaned_text
+
+    # Confidence logic: prob[1] is spam, prob[0] is ham
+    confidence = prob[1] if prediction.lower() == "spam" else prob[0]
+
+    return prediction, confidence, cleaned_text
 
 # ------------------------------
 # Page Configuration
@@ -218,6 +250,10 @@ if classify_button:
         # Show the warning in col2, under the button
         with col2:
             st.warning("Please paste an email into the text box above.", icon="⚠️")
+    elif model is None:
+         # Show the model error in col2, under the button
+         with col2:
+             st.error("Model is not loaded. Cannot classify.")
     else:
         # The spinner and results will appear in the main container
         with st.spinner("🔍 Scanning for threats..."):
@@ -274,3 +310,5 @@ st.markdown(
     "<div class='footer'>© 2025 Spam Detector Inc.</div>",
     unsafe_allow_html=True
 )
+
+
